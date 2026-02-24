@@ -490,6 +490,7 @@ static void _parse_error(struct vcardparser_state *state,
     if (state->prop) {
         vcardproperty_free(state->prop);
     }
+    state->version = NULL;
 
     /* coverity[resource_leak] */
     vcardparameter *errParam = vcardparameter_new_xlicerrortype(type);
@@ -850,6 +851,12 @@ static int _parse_vcard(struct vcardparser_state *state,
         _parse_prop(state);
 
         if (vcardproperty_isa(state->prop) == VCARD_BEGIN_PROPERTY) {
+            if (vcardvalue_isa(vcardproperty_get_value(state->prop)) !=
+                VCARD_TEXT_VALUE) {
+                r = PE_VALUE_INVALID;
+                break;
+            }
+
             const char *val =
                 vcardvalue_get_text(vcardproperty_get_value(state->prop));
             vcardcomponent_kind kind = vcardcomponent_string_to_kind(val);
@@ -875,6 +882,12 @@ static int _parse_vcard(struct vcardparser_state *state,
             r = PE_MISMATCHED_CARD;
             break;
         } else if (vcardproperty_isa(state->prop) == VCARD_END_PROPERTY) {
+            if (vcardvalue_isa(vcardproperty_get_value(state->prop)) !=
+                VCARD_TEXT_VALUE) {
+                r = PE_VALUE_INVALID;
+                break;
+            }
+
             const char *val =
                 vcardvalue_get_text(vcardproperty_get_value(state->prop));
             vcardcomponent_kind kind = vcardcomponent_string_to_kind(val);
@@ -912,6 +925,7 @@ static int vcardparser_parse(struct vcardparser_state *state, int only_one)
     state->p = state->base;
 
     buf_init(&state->buf, BUF_GROW);
+    buf_init(&state->errbuf, BUF_GROW);
 
     /* don't parse trailing non-whitespace */
     return _parse_vcard(state, state->root, only_one);
